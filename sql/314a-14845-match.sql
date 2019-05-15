@@ -393,6 +393,38 @@ END;
 
 
 ---ALGORITHM TESTING
+SELECT b.last_name
+FROM [Compliance].[dbo].[314a-Persons-14845] b
+
+GO
+DECLARE @cnt INT = 1;
+DECLARE @cnt_total INT = (select count(*) from [Compliance].[dbo].[314a-Persons-14845] b);
+DECLARE @shortName integer;
+---ACCOUNTING FOR SHORT NAMES
+DECLARE @allPersons table(
+	[last_name] [nvarchar](4000) NULL,
+	[id] [int] IDENTITY(1,1) NOT NULL)
+INSERT INTO @allPersons
+	SELECT distinct concat('%',b.last_name,'%') FROM [Compliance].[dbo].[314a-Persons-14845] b where LEN(b.last_name) <= 4
+INSERT INTO @allPersons
+	SELECT distinct concat('%',substring(b.last_name,2,CEILING((LEN(b.last_name)/1.5)/1.5)),'%') FROM [Compliance].[dbo].[314a-Persons-14845] b where LEN(b.last_name) > 4
+SELECT * from @allPersons
+---ACCOUNTING FOR SHORT NAMES
+SET @shortName = 4
+WHILE @cnt < @cnt_total
+BEGIN
+	
+	IF @shortName <= (SELECT LEN(b.last_name) FROM [Compliance].[dbo].[314a-Persons-14845] b where b.id = @cnt)
+		select distinct concat('%',b.last_name,'%') 
+		from [Compliance].[dbo].[314a-Persons-14845] b
+		where b.id = @cnt and LEN(b.last_name) <= @shortName;
+	ELSE
+		select distinct concat('%',substring(b.last_name,2,CEILING((LEN(b.last_name)/1.5)/1.5)),'%')
+		from [Compliance].[dbo].[314a-Persons-14845] b
+		where b.id = @cnt;
+	SET @cnt = @cnt + 1;
+END;
+ 
 SELECT distinct CONCAT('%',LEFT(b.first_name,LEN(b.first_name)/2),'%'
 			,LEFT(b.last_name,2),'%')
 		FROM [Compliance].[dbo].[314a-Persons-14845] b 
