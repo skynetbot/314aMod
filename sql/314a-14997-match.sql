@@ -54,7 +54,6 @@ INSERT INTO [Compliance].[dbo].[314a_14997_Match_Tier1]
 SET @cnt = @cnt + 1;
 END;
 -------------check only last name------------------------
-SET @cnt = 1;
 DECLARE @allPersonsln table(
 	[match_string] [nvarchar](4000) NULL,
 	[last_name] [nvarchar](4000) NULL,
@@ -69,6 +68,7 @@ INSERT INTO @allPersonsln
 		substring(b.last_name,1,CEILING((LEN(b.last_name)/1.5)/1.5)),'%')
 		, b.last_name,b.first_name,b.middle_name,b.suffix
 	FROM [Compliance].[dbo].[314a-Person-14997] b where LEN(b.last_name) > 4
+SET @cnt = 1;
 WHILE @cnt <= (select count(*) from @allPersonsln)
 BEGIN
 	--############### INSERT FROM CLIENTESFIRMANTEStable ###############
@@ -85,33 +85,32 @@ INSERT INTO [Compliance].[dbo].[314a_14997_Match_Tier1]
 SET @cnt = @cnt + 1;
 END;
 	--############### INSERT FROM TRANSACTIONS table ###############
+SET @cnt = 1;
+WHILE @cnt <= (select count(*) from @allPersonsfn)
+BEGIN
 INSERT INTO [Compliance].[dbo].[314a_14997_Match_Tier1]
 	SELECT a.Nombre,'','',''
 		,b.last_name,b.first_name,b.middle_name,b.suffix
-	FROM [Compliance].[dbo].[TRNCONSULTA-2019-05-09names] a
-		,[Compliance].[dbo].[314a-Person-14997] b
+	FROM [Compliance].[dbo].[TRNCONSULTA-2019-05-23names] a
+		,@allPersonsfn b
 	WHERE a.Nombre LIKE
-		(SELECT distinct concat(
-			'%',
-			substring(b.first_name,2,CEILING((LEN(b.first_name)/1.5)/1.5)),
-			'%')
-		FROM [Compliance].[dbo].[314a-Person-14997] b 
+		(select b.match_string
+		FROM @allPersonsfn b
 		where b.id = @cnt) AND b.id = @cnt
-		OR a.Nombre LIKE
-		(SELECT distinct concat(
-			'%',
-			substring(b.last_name,2,CEILING((LEN(b.last_name)/1.5)/1.5)),
-			'%')
-		FROM [Compliance].[dbo].[314a-Person-14997] b 
+SET @cnt = @cnt + 1;
+END;
+SET @cnt = 1;
+WHILE @cnt <= (select count(*) from @allPersonsln)
+BEGIN
+INSERT INTO [Compliance].[dbo].[314a_14997_Match_Tier1]
+	SELECT a.Nombre,'','',''
+		,b.last_name,b.first_name,b.middle_name,b.suffix
+	FROM [Compliance].[dbo].[TRNCONSULTA-2019-05-23names] a
+		,@allPersonsln b
+	WHERE a.Nombre LIKE
+		(select b.match_string
+		FROM @allPersonsln b
 		where b.id = @cnt) AND b.id = @cnt
-		OR a.Nombre LIKE
-		(SELECT distinct concat(
-			'%',
-			substring(b.middle_name,2,CEILING((LEN(b.middle_name)/1.5)/1.5)),
-			'%')
-		FROM [Compliance].[dbo].[314a-Person-14997] b 
-		where b.id = @cnt) AND b.id = @cnt
-		--############### INSERT FROM TRNCONSULTA ###############
 SET @cnt = @cnt + 1;
 END;
 --########################### TIER 1 CLEANED ########################################
@@ -350,7 +349,7 @@ INSERT INTO [Compliance].[dbo].[314a_Business_14997_Match_Tier1]
 	SELECT a.Nombre,'','','',''
 		,'',''
 		,b.business_name
-	FROM [Compliance].[dbo].[TRNCONSULTA-2019-05-09names] a
+	FROM [Compliance].[dbo].[TRNCONSULTA-2019-05-23names] a
 	,[Compliance].[dbo].[314a-Business-14997] b
 	WHERE a.Nombre LIKE
 		(SELECT distinct concat(
