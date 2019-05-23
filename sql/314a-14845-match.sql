@@ -254,33 +254,31 @@ INSERT INTO [Compliance].[dbo].[314a_14845_Match_Tier3]
 		,[Compliance].[dbo].[314a_14845_MatchPerson_Tier2] b
 	WHERE a.sbi_name LIKE
 		(SELECT distinct concat(
-			'%'
-			,b.last_name
-			,'%'
-			,b.first_name
-			,'%')
+			b.last_name,
+			'_',
+			substring(b.first_name,1,CEILING((LEN(b.first_name)/1.5)/1.5)),
+			'%')
 		FROM [Compliance].[dbo].[314a_14845_MatchPerson_Tier2] b 
 		where b.id = @cnt) AND b.id = @cnt
 		OR a.sbi_name LIKE
 		(SELECT distinct concat(
-			'%'
-			,b.first_name
-			,'%'
-			,b.last_name
-			,'%')
+			b.first_name,
+			'_',
+			substring(b.last_name,1,CEILING((LEN(b.last_name)/1.5)/1.5)),
+			'%')
 		FROM [Compliance].[dbo].[314a_14845_MatchPerson_Tier2] b 
 		where b.id = @cnt) AND b.id = @cnt
-		OR a.sbi_name LIKE
-		(SELECT distinct concat(
-			'%'
-			,b.first_name
-			,'_'
-			,b.middle_name
-			,'_'
-			,b.last_name
-			,'%')
-		FROM [Compliance].[dbo].[314a_14845_MatchPerson_Tier2] b 
-		where b.id = @cnt) AND b.id = @cnt
+		--OR a.sbi_name LIKE
+		--(SELECT distinct concat(
+		--	'%'
+		--	,b.first_name
+		--	,'_'
+		--	,b.middle_name
+		--	,'_'
+		--	,b.last_name
+		--	,'%')
+		--FROM [Compliance].[dbo].[314a_14845_MatchPerson_Tier2] b 
+		--where b.id = @cnt) AND b.id = @cnt
 		--OR a.sbi_name LIKE
 		--(SELECT distinct concat(
 		--	'%'
@@ -298,9 +296,9 @@ END;
 
 ----################################ BUSINESS #######################################
 GO
-DROP TABLE IF EXISTS [dbo].[314a_Business_14845_Match_Tier1]
+DROP TABLE IF EXISTS [Compliance].[dbo].[314a_Business_14845_Match_Tier1]
 GO
-CREATE TABLE [dbo].[314a_Business_14845_Match_Tier1](
+CREATE TABLE [Compliance].[dbo].[314a_Business_14845_Match_Tier1](
 	[sbi_Nombre] [nvarchar](max) NULL,
     [sbi_Pais_Reside_Cli] [nvarchar](max) NULL,
     [sbi_Observaciones_1] [nvarchar](max) NULL,
@@ -309,35 +307,33 @@ CREATE TABLE [dbo].[314a_Business_14845_Match_Tier1](
     [sbi_Banco_Rec] [nvarchar](max) NULL,
     [sbi_Nombre_3] [nvarchar](max) NULL,
 	[314a_business_name] [nvarchar](max) NULL,
-	[Id] [int] IDENTITY(1,1) NOT NULL
+	[id] [int] IDENTITY(1,1) NOT NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
 DECLARE @cnt INT = 1;
 DECLARE @cnt_total INT = (
-	select count(*) from [Compliance].[dbo].[Business-2019-23-04-14845]);
+	select count(*) from [Compliance].[dbo].[314a-Business-14845]);
 WHILE @cnt <= @cnt_total
 BEGIN
 INSERT INTO [Compliance].[dbo].[314a_Business_14845_Match_Tier1]
 	SELECT a.Nombre,'','','',''
 		,'',''
 		,b.business_name
-		
-	FROM [Compliance].[dbo].[TRNCONSULTA-2019-04-24nbm] a
-	,[Compliance].[dbo].[Business-2019-23-04-14845] b
+	FROM [Compliance].[dbo].[TRNCONSULTA-2019-05-09names] a
+	,[Compliance].[dbo].[314a-Business-14845] b
 	WHERE a.Nombre LIKE
 		(SELECT distinct concat(
 			'%',
 			substring(b.business_name,2,CEILING((LEN(b.business_name)/1.5)/1.5)),
 			'%')
-		FROM [Compliance].[dbo].[Business-2019-23-04-14845] b 
+		FROM [Compliance].[dbo].[314a-Business-14845] b 
 		where b.id = @cnt) AND b.id = @cnt
 	SET @cnt = @cnt + 1;
 END;
 GO
-DROP TABLE IF EXISTS [dbo].[314_MATCH_BUSINESS_DISC]
+DROP TABLE IF EXISTS [dbo].[314a_Business_14845_Match_Tier2]
 GO
-CREATE TABLE [dbo].[314_MATCH_BUSINESS_DISC](
-	[Id] [int] IDENTITY(1,1) NOT NULL,
+CREATE TABLE [dbo].[314a_Business_14845_Match_Tier2](
 	[sbi_business_name] [nvarchar](max) NOT NULL,
 	[sbi_Obs_1] [nvarchar](max) NULL,
 	[sbi_Obs_2] [nvarchar](max) NULL,
@@ -353,12 +349,13 @@ CREATE TABLE [dbo].[314_MATCH_BUSINESS_DISC](
     [314a_city] [nvarchar](max) NULL,
     [314a_state] [nvarchar](max) NULL,
     [314a_zip] [nvarchar](max) NULL,
-    [314a_country] [nvarchar](max) NULL
+    [314a_country] [nvarchar](max) NULL,
+	[id] [int] IDENTITY(1,1) NOT NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
 DECLARE @cnt INT = 1;
 DECLARE @cnt_total INT = (
-	select count(*) from [Compliance].[dbo].[Businesses 2019-09-04 14555]);
+	select count(*) from [Compliance].[dbo].[314a-Business-14845]);
 WHILE @cnt < @cnt_total
 BEGIN
 --INSERT INTO [Compliance].[dbo].[314_MATCH_BUSINESS_DISC]
@@ -393,7 +390,7 @@ END;
 
 
 ---ALGORITHM TESTING
-SELECT b.last_name
+SELECT distinct b.last_name, b.first_name
 FROM [Compliance].[dbo].[314a-Persons-14845] b
 
 GO
@@ -402,26 +399,35 @@ DECLARE @cnt_total INT = (select count(*) from [Compliance].[dbo].[314a-Persons-
 DECLARE @shortName integer;
 ---ACCOUNTING FOR SHORT NAMES
 DECLARE @allPersons table(
+	[match_string] [nvarchar](4000) NULL,
 	[last_name] [nvarchar](4000) NULL,
+	[first_name] [nvarchar](4000) NULL,
+	[middle_name] [nvarchar](4000) NULL,
+	[suffix] [nvarchar](4000) NULL,
 	[id] [int] IDENTITY(1,1) NOT NULL)
 INSERT INTO @allPersons
-	SELECT distinct concat('%',b.last_name,'%') FROM [Compliance].[dbo].[314a-Persons-14845] b where LEN(b.last_name) <= 4
+	SELECT distinct concat('%',b.last_name,'%',b.first_name,'%'), b.last_name,b.first_name,b.middle_name,b.suffix FROM [Compliance].[dbo].[314a-Persons-14845] b where LEN(b.last_name) <= 4 or LEN(b.first_name) <= 4
 INSERT INTO @allPersons
-	SELECT distinct concat('%',substring(b.last_name,2,CEILING((LEN(b.last_name)/1.5)/1.5)),'%') FROM [Compliance].[dbo].[314a-Persons-14845] b where LEN(b.last_name) > 4
-SELECT * from @allPersons
+	SELECT distinct concat('%',
+		substring(b.last_name,1,CEILING((LEN(b.last_name)/1.5)/1.5)),'%',
+		substring(b.first_name,1,CEILING((LEN(b.first_name)/1.5)/1.5)),'%')
+		, b.last_name,b.first_name,b.middle_name,b.suffix
+	FROM [Compliance].[dbo].[314a-Persons-14845] b where LEN(b.last_name) > 4 or LEN(b.first_name) > 4
+SELECT * from @allPersons a
+--SELECT distinct a.match_string, b.last_name, b.first_name, b.middle_name, b.suffix  from @allPersons a right join [Compliance].[dbo].[314a-Persons-14845] b on b.last_name like a.match_string
 ---ACCOUNTING FOR SHORT NAMES
 SET @shortName = 4
 WHILE @cnt < @cnt_total
 BEGIN
 	
-	IF @shortName <= (SELECT LEN(b.last_name) FROM [Compliance].[dbo].[314a-Persons-14845] b where b.id = @cnt)
-		select distinct concat('%',b.last_name,'%') 
-		from [Compliance].[dbo].[314a-Persons-14845] b
-		where b.id = @cnt and LEN(b.last_name) <= @shortName;
-	ELSE
-		select distinct concat('%',substring(b.last_name,2,CEILING((LEN(b.last_name)/1.5)/1.5)),'%')
-		from [Compliance].[dbo].[314a-Persons-14845] b
-		where b.id = @cnt;
+	--IF @shortName <= (SELECT LEN(b.last_name) FROM [Compliance].[dbo].[314a-Persons-14845] b where b.id = @cnt)
+	--	select distinct concat('%',b.last_name,'%') 
+	--	from [Compliance].[dbo].[314a-Persons-14845] b
+	--	where b.id = @cnt and LEN(b.last_name) <= @shortName;
+	--ELSE
+	--	select distinct concat('%',substring(b.last_name,2,CEILING((LEN(b.last_name)/1.5)/1.5)),'%')
+	--	from [Compliance].[dbo].[314a-Persons-14845] b
+	--	where b.id = @cnt;
 	SET @cnt = @cnt + 1;
 END;
  
@@ -437,3 +443,5 @@ FROM [Compliance].[dbo].[314a-Persons-14845] b
 
 select b.last_name,concat('%',substring(b.last_name,2,CEILING((LEN(b.last_name)/1.5)/1.5)),'%')
 FROM [Compliance].[dbo].[314a-Persons-14845] b 
+
+SELECT distinct concat('%',substring(b.last_name,1,CEILING((LEN(b.last_name)/1.5)/1.5)),'%') FROM [Compliance].[dbo].[314a-Persons-14845] b
