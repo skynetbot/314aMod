@@ -164,60 +164,71 @@ CREATE TABLE [dbo].[314a_14997_Match_Tier2](
 	[id] [int] IDENTITY(1,1) NOT NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
+---------2nd tier------------------------------------------
+---ACCOUNTING FOR SHORT NAMES-- format last_name firstname
+DECLARE @allPersonslnfn table(
+	[match_string] [nvarchar](4000) NULL,
+	[last_name] [nvarchar](4000) NULL,
+	[first_name] [nvarchar](4000) NULL,
+	[middle_name] [nvarchar](4000) NULL,
+	[suffix] [nvarchar](4000) NULL,
+	[id] [int] IDENTITY(1,1) NOT NULL)
+INSERT INTO @allPersonslnfn
+	SELECT distinct concat('%',b.last_name,'%',b.first_name,'%'),
+		b.last_name,b.first_name,b.middle_name,b.suffix 
+	FROM [Compliance].[dbo].[314a_14997_MatchPerson_Tier1] b where LEN(b.last_name) <= 4 or LEN(b.first_name) <= 4
+INSERT INTO @allPersonslnfn
+	SELECT distinct concat('%',
+		substring(b.last_name,2,CEILING((LEN(b.last_name)/1.5)/1.5)),'%',
+		substring(b.first_name,2,CEILING((LEN(b.first_name)/1.5)/1.5)),'%')
+		, b.last_name,b.first_name,b.middle_name,b.suffix
+	FROM [Compliance].[dbo].[314a_14997_MatchPerson_Tier1] b where LEN(b.last_name) > 4 or LEN(b.first_name) > 4
+--select * from @allPersonslnfn
+---ACCOUNTING FOR SHORT NAMES-- format firstname last_name
+DECLARE @allPersonsfnln table(
+	[match_string] [nvarchar](4000) NULL,
+	[last_name] [nvarchar](4000) NULL,
+	[first_name] [nvarchar](4000) NULL,
+	[middle_name] [nvarchar](4000) NULL,
+	[suffix] [nvarchar](4000) NULL,
+	[id] [int] IDENTITY(1,1) NOT NULL)
+INSERT INTO @allPersonsfnln
+	SELECT distinct concat('%',b.first_name,'%',b.last_name,'%'),
+		b.last_name,b.first_name,b.middle_name,b.suffix 
+	FROM [Compliance].[dbo].[314a_14997_MatchPerson_Tier1] b where LEN(b.last_name) <= 4 or LEN(b.first_name) <= 4
+INSERT INTO @allPersonsfnln
+	SELECT distinct concat('%',
+		substring(b.first_name,2,CEILING((LEN(b.first_name)/1.5)/1.5)),'%',
+		substring(b.last_name,2,CEILING((LEN(b.last_name)/1.5)/1.5)),'%')
+		, b.last_name,b.first_name,b.middle_name,b.suffix
+	FROM [Compliance].[dbo].[314a_14997_MatchPerson_Tier1] b where LEN(b.last_name) > 4 or LEN(b.first_name) > 4
+--select * from @allPersonsfnln
+---------2nd tier------------------------------------------
 DECLARE @cnt INT = 1;
-DECLARE @cnt_total INT = (
-	select count(*) from [Compliance].[dbo].[314a_14997_MatchPerson_Tier1]);
-WHILE @cnt < @cnt_total
+WHILE @cnt <= (select count(*) from @allPersonsfnln)
 BEGIN
 INSERT INTO [Compliance].[dbo].[314a_14997_Match_Tier2]
 	SELECT a.sbi_name, a.sbi_name_alias,a.sbi_number,a.sbi_country,
 		b.last_name,b.first_name,b.middle_name,b.suffix
 	FROM [Compliance].[dbo].[314a_14997_sbiMatch_Tier1] a
-	,[Compliance].[dbo].[314a_14997_MatchPerson_Tier1] b
+	,@allPersonsfnln b
 	WHERE a.sbi_name LIKE
-		(SELECT distinct concat(
-			'%',
-			substring(b.first_name,2,CEILING((LEN(b.first_name)/1.5)/1.5)),
-			'%',
-			substring(b.last_name,2,CEILING((LEN(b.last_name)/1.5)/1.5)),
-			'%')
-		FROM [Compliance].[dbo].[314a_14997_MatchPerson_Tier1] b 
+		(select b.match_string
+		FROM @allPersonsfnln b
 		where b.id = @cnt) AND b.id = @cnt
-		OR a.sbi_name LIKE
-		(SELECT distinct concat(
-			'%',
-			substring(b.last_name,2,CEILING((LEN(b.last_name)/1.5)/1.5)),
-			'%',
-			substring(b.first_name,2,CEILING((LEN(b.first_name)/1.5)/1.5)),
-			'%')
-		FROM [Compliance].[dbo].[314a_14997_MatchPerson_Tier1] b 
-		where b.id = @cnt) AND b.id = @cnt
-		OR a.sbi_name LIKE
-		(SELECT distinct concat(
-			'%',
-			substring(b.first_name,2,CEILING((LEN(b.first_name)/1.5)/1.5)),
-			'%',
-			substring(b.middle_name,2,CEILING((LEN(b.middle_name)/1.5)/1.5)),
-			'%')
-		FROM [Compliance].[dbo].[314a_14997_MatchPerson_Tier1] b 
-		where b.id = @cnt) AND b.id = @cnt
-		OR a.sbi_name LIKE
-		(SELECT distinct concat(
-			'%',
-			substring(b.middle_name,2,CEILING((LEN(b.middle_name)/1.5)/1.5)),
-			'%',
-			substring(b.last_name,2,CEILING((LEN(b.last_name)/1.5)/1.5)),
-			'%')
-		FROM [Compliance].[dbo].[314a_14997_MatchPerson_Tier1] b 
-		where b.id = @cnt) AND b.id = @cnt
-		OR a.sbi_name LIKE
-		(SELECT distinct concat(
-			'%',
-			substring(b.last_name,2,CEILING((LEN(b.last_name)/1.5)/1.5)),
-			'%',
-			substring(b.middle_name,2,CEILING((LEN(b.middle_name)/1.5)/1.5)),
-			'%')
-		FROM [Compliance].[dbo].[314a_14997_MatchPerson_Tier1] b 
+SET @cnt = @cnt + 1;
+END;
+SET @cnt = 1;
+WHILE @cnt <= (select count(*) from @allPersonslnfn)
+BEGIN
+INSERT INTO [Compliance].[dbo].[314a_14997_Match_Tier2]
+	SELECT a.sbi_name, a.sbi_name_alias,a.sbi_number,a.sbi_country,
+		b.last_name,b.first_name,b.middle_name,b.suffix
+	FROM [Compliance].[dbo].[314a_14997_sbiMatch_Tier1] a
+	,@allPersonslnfn b
+	WHERE a.sbi_name LIKE
+		(select b.match_string
+		FROM @allPersonslnfn b
 		where b.id = @cnt) AND b.id = @cnt
 SET @cnt = @cnt + 1;
 END;
@@ -283,41 +294,6 @@ INSERT INTO [Compliance].[dbo].[314a_14997_Match_Tier3]
 	FROM [Compliance].[dbo].[314a_14997_sbiMatch_Tier2] a
 		,[Compliance].[dbo].[314a_14997_MatchPerson_Tier2] b
 	WHERE a.sbi_name LIKE
-		(SELECT distinct concat(
-			b.last_name,
-			'_',
-			substring(b.first_name,1,CEILING((LEN(b.first_name)/1.5)/1.5)),
-			'%')
-		FROM [Compliance].[dbo].[314a_14997_MatchPerson_Tier2] b 
-		where b.id = @cnt) AND b.id = @cnt
-		OR a.sbi_name LIKE
-		(SELECT distinct concat(
-			b.first_name,
-			'_',
-			substring(b.last_name,1,CEILING((LEN(b.last_name)/1.5)/1.5)),
-			'%')
-		FROM [Compliance].[dbo].[314a_14997_MatchPerson_Tier2] b 
-		where b.id = @cnt) AND b.id = @cnt
-		--OR a.sbi_name LIKE
-		--(SELECT distinct concat(
-		--	'%'
-		--	,b.first_name
-		--	,'_'
-		--	,b.middle_name
-		--	,'_'
-		--	,b.last_name
-		--	,'%')
-		--FROM [Compliance].[dbo].[314a_14997_MatchPerson_Tier2] b 
-		--where b.id = @cnt) AND b.id = @cnt
-		--OR a.sbi_name LIKE
-		--(SELECT distinct concat(
-		--	'%'
-		--	,b.first_name
-		--	,'_'
-		--	,b.middle_name
-		--	,'%')
-		--FROM [Compliance].[dbo].[314a_14997_MatchPerson_Tier2] b 
-		--where b.id = @cnt) AND b.id = @cnt
 SET @cnt = @cnt + 1;
 END;
 
