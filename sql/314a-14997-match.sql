@@ -287,22 +287,30 @@ CREATE TABLE [Compliance].[dbo].[314a_Business_14997_Match_Tier1](
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
 DECLARE @cnt INT = 1;
-DECLARE @cnt_total INT = (
-	select count(*) from [Compliance].[dbo].[314a-Business-14997]);
-WHILE @cnt <= @cnt_total
+DECLARE @allBusiness table(
+	[match_string] [nvarchar](4000) NULL,
+	[business_name] [nvarchar](4000) NULL,
+	[id] [int] IDENTITY(1,1) NOT NULL)
+INSERT INTO @allBusiness
+	SELECT distinct concat('%',b.business_name,'%') as 'match_string',
+		b.business_name
+	FROM [Compliance].[dbo].[314a-Business-14997] b where LEN(b.business_name) <= 4
+INSERT INTO @allBusiness
+	SELECT distinct concat('%',
+		substring(b.business_name,2,CEILING((LEN(b.business_name)/1.5)/1.5)),'%')
+		as 'match_string',b.business_name
+	FROM [Compliance].[dbo].[314a-Business-14997] b where LEN(b.business_name) > 4
+WHILE @cnt <= (select count(*) from @allBusiness)
 BEGIN
 INSERT INTO [Compliance].[dbo].[314a_Business_14997_Match_Tier1]
 	SELECT a.Nombre,'','','',''
 		,'',''
 		,b.business_name
 	FROM [Compliance].[dbo].[TRNCONSULTA-2019-05-23names] a
-	,[Compliance].[dbo].[314a-Business-14997] b
+	,@allBusiness b
 	WHERE a.Nombre LIKE
-		(SELECT distinct concat(
-			'%',
-			substring(b.business_name,2,CEILING((LEN(b.business_name)/1.5)/1.5)),
-			'%')
-		FROM [Compliance].[dbo].[314a-Business-14997] b 
+		(select b.match_string
+		FROM @allBusiness b
 		where b.id = @cnt) AND b.id = @cnt
 	SET @cnt = @cnt + 1;
 END;
@@ -311,40 +319,34 @@ DROP TABLE IF EXISTS [dbo].[314a_Business_14997_Match_Tier2]
 GO
 CREATE TABLE [dbo].[314a_Business_14997_Match_Tier2](
 	[sbi_business_name] [nvarchar](max) NOT NULL,
-	[sbi_Obs_1] [nvarchar](max) NULL,
-	[sbi_Obs_2] [nvarchar](max) NULL,
-	[sbi_Obs_3] [nvarchar](max) NULL,
-	[sbi_Obs_4] [nvarchar](max) NULL,
-	[sbi_Obs_5] [nvarchar](max) NULL,
-	[sbi_Obs_6] [nvarchar](max) NULL,
 	[314a_business_name] [nvarchar](max) NULL,
-    [314a_dba_name] [nvarchar](max) NULL,
-    [314a_number] [nvarchar](max) NULL,
-    [314a_number_type] [nvarchar](max) NULL,
-    [314a_street] [nvarchar](max) NULL,
-    [314a_city] [nvarchar](max) NULL,
-    [314a_state] [nvarchar](max) NULL,
-    [314a_zip] [nvarchar](max) NULL,
-    [314a_country] [nvarchar](max) NULL,
 	[id] [int] IDENTITY(1,1) NOT NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
 DECLARE @cnt INT = 1;
-DECLARE @cnt_total INT = (
-	select count(*) from [Compliance].[dbo].[314a-Business-14997]);
-WHILE @cnt < @cnt_total
+DECLARE @allBusiness table(
+	[match_string] [nvarchar](4000) NULL,
+	[business_name] [nvarchar](4000) NULL,
+	[id] [int] IDENTITY(1,1) NOT NULL)
+INSERT INTO @allBusiness
+	SELECT distinct concat('%',b.business_name,'%') as 'match_string',
+		b.business_name
+	FROM [Compliance].[dbo].[314a-Business-14997] b where LEN(b.business_name) <= 4
+INSERT INTO @allBusiness
+	SELECT distinct concat('%',
+		substring(b.business_name,2,CEILING((LEN(b.business_name)/1.5)/1)),'%')
+		as 'match_string',b.business_name
+	FROM [Compliance].[dbo].[314a-Business-14997] b where LEN(b.business_name) > 4
+WHILE @cnt <= (select count(*) from @allBusiness)
 BEGIN
 INSERT INTO [Compliance].[dbo].[314a_Business_14997_Match_Tier2]
-	SELECT a.sbi_Nombre,a.sbi_Pais_Reside_Cli,a.sbi_Observaciones_1,
-		   a.sbi_Nombre_1,a.sbi_Nombre_2,a.sbi_Banco_Rec,a.sbi_Nombre_3,
-		   b.business_name,b.dba_name,b.number,b.number_type,b.street,
-		   b.city,b.state,b.zip,b.country
+	SELECT a.sbi_Nombre,
+		   b.business_name
 	FROM [Compliance].[dbo].[314a_Business_14997_Match_Tier1] a
-	,[Compliance].[dbo].[314a-Business-14997] b
-	WHERE a.sbi_Nombre LIKE '%' +
-		(SELECT CONCAT('%',RIGHT(b.business_name,4),'%') AS 'matchedString'
-		FROM [Compliance].[dbo].[314a-Business-14997] b 
-		where b.id = @cnt) + '%' AND b.id = @cnt
+	,@allBusiness b
+	WHERE a.sbi_Nombre LIKE (select b.match_string
+		FROM @allBusiness b
+		where b.id = @cnt) AND b.id = @cnt
 	SET @cnt = @cnt + 1;
 END;
 
