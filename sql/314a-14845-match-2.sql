@@ -269,36 +269,6 @@ INSERT INTO [dbo].[314a_14845_sbiMatch_Tier2]
       ,[sbi_country]
 	FROM [Compliance].[dbo].[314a_14845_Match_Tier2]
 GO
---########################### TIER 3 ################################################
-DROP TABLE IF EXISTS [dbo].[314a_14845_Match_Tier3]
-GO
-CREATE TABLE [dbo].[314a_14845_Match_Tier3](
-	[sbi_name] [nvarchar](max) NOT NULL,
-	[sbi_name_alias] [nvarchar](max) NULL,
-	[sbi_number] [nvarchar](max) NULL,
-	[sbi_country] [nvarchar](max) NULL,
-	[last_name] [nvarchar](max) NOT NULL,
-	[first_name] [nvarchar](max) NULL,
-	[middle_name] [nvarchar](max) NULL,
-	[suffix] [nvarchar](max) NULL,
-	[id] [int] IDENTITY(1,1) NOT NULL
-) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
-GO
-DECLARE @cnt INT = 1;
-DECLARE @cnt_total INT = (
-	select count(*) from [Compliance].[dbo].[314a_14845_MatchPerson_Tier2]);
-WHILE @cnt < @cnt_total
-BEGIN
-INSERT INTO [Compliance].[dbo].[314a_14845_Match_Tier3]
-	SELECT a.sbi_name, a.sbi_name_alias,a.sbi_number,a.sbi_country,
-		b.last_name,b.first_name,b.middle_name,b.suffix
-	FROM [Compliance].[dbo].[314a_14845_sbiMatch_Tier2] a
-		,[Compliance].[dbo].[314a_14845_MatchPerson_Tier2] b
-	WHERE a.sbi_name LIKE
-SET @cnt = @cnt + 1;
-END;
-
-
 
 
 ----################################ BUSINESS #######################################
@@ -366,16 +336,16 @@ DECLARE @cnt_total INT = (
 	select count(*) from [Compliance].[dbo].[314a-Business-14845]);
 WHILE @cnt < @cnt_total
 BEGIN
---INSERT INTO [Compliance].[dbo].[314_MATCH_BUSINESS_DISC]
+INSERT INTO [Compliance].[dbo].[314a_Business_14845_Match_Tier2]
 	SELECT a.sbi_Nombre,a.sbi_Pais_Reside_Cli,a.sbi_Observaciones_1,
 		   a.sbi_Nombre_1,a.sbi_Nombre_2,a.sbi_Banco_Rec,a.sbi_Nombre_3,
 		   b.business_name,b.dba_name,b.number,b.number_type,b.street,
 		   b.city,b.state,b.zip,b.country
-	FROM [Compliance].[dbo].[314_MATCH_BUSINESS] a
-	,[Compliance].[dbo].[Businesses 2019-09-04 14845] b
+	FROM [Compliance].[dbo].[314a_Business_14845_Match_Tier1] a
+	,[Compliance].[dbo].[314a-Business-14845] b
 	WHERE a.sbi_Nombre LIKE '%' +
 		(SELECT CONCAT('%',RIGHT(b.business_name,4),'%') AS 'matchedString'
-		FROM [Compliance].[dbo].[Businesses 2019-09-04 14845] b 
+		FROM [Compliance].[dbo].[314a-Business-14845] b 
 		where b.id = @cnt) + '%' AND b.id = @cnt
 	SET @cnt = @cnt + 1;
 END;
